@@ -1,5 +1,10 @@
 #!/usr/bin/python
 
+MUSIC_FILE = "~/.music"
+
+VLC_EXEC = "/Applications/VLC.app/Contents/MacOS/VLC"
+VLC_SOCKET = "/tmp/vlc.sock"
+
 import os
 import socket
 import stat
@@ -8,19 +13,27 @@ import sys
 from time import sleep
 
 class MusicList(object):
-    def __init__(self, file="~/.music"):
+    def __init__(self, file=MUSIC_FILE):
         self.path = os.path.expanduser(file)
+        if not self.exists():
+            self.write_default()
         self.load()
-        
+    
+    def write_default(self):
+        f = open(self.path, 'w')
+        f.write("te: http://www.di.fm/mp3/techno.pls\n")
+        f.write("tr: http://www.di.fm/mp3/trance.pls\n")
+        f.write("vt: http://www.di.fm/mp3/vocaltrance.pls\n")
+        f.close()
+    
     def exists(self):
         return os.path.isfile(self.path)
 
     def load(self):
         if self.exists():
-            f = open(self.path)
+            f = open(self.path, 'r')
             music_lines = f.readlines()
             f.close
-            music_lines.pop(0)
             split_lines = [self._striplist(ml.split(':',1)) for ml in music_lines]
             self.data = dict(split_lines)
 
@@ -35,7 +48,7 @@ class MusicList(object):
 
 
 class VLCSocket(object):
-    def __init__(self, exec_path="/Applications/VLC.app/Contents/MacOS/VLC", socket_path="/tmp/vlc.sock"):
+    def __init__(self, exec_path=VLC_EXEC, socket_path=VLC_SOCKET):
         self.exec_path = exec_path
         self.socket_path = socket_path
         self.socket = None

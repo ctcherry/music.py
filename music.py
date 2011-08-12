@@ -9,6 +9,7 @@ import os
 import socket
 import stat
 import sys
+import subprocess
 
 from time import sleep
 
@@ -52,13 +53,16 @@ class VLCSocket(object):
         self.exec_path = exec_path
         self.socket_path = socket_path
         self.socket = None
-        
+    
+    def start(self):
+        if not self.socket_exist():
+            # cmd = "%s --daemon -I oldrc --rc-unix=%s --rc-fake-tty" % (self.exec_path, self.socket_path)
+            # os.system(cmd)
+            subprocess.call([self.exec_path, '--daemon', '-I', 'oldrc', '--rc-unix', self.socket_path, '--rc-fake-tty'])
+            sleep(2)
+
     def connect(self):
-        if self.socket is None:
-            if not self.socket_exist():
-                os.system("%s --daemon -I oldrc --rc-unix=%s --rc-fake-tty" % (self.exec_path, self.socket_path))
-                sleep(1)
-                
+        if self.socket is None and self.socket_exist():
             self.socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
             self.socket.connect(self.socket_path)
         
@@ -69,41 +73,47 @@ class VLCSocket(object):
                 return True
             else:
                 return False
-        return False
+        else:
+            return False
     
     def send(self, data):
         if self.socket_exist():
+            self.connect()
             if self.socket is not None:
                 self.socket.send(data+"\n")
         
     def close(self):
-        self.socket.close()
-        
+        if self.socket is not None:
+            self.socket.close()
+
     def quit(self):
-        if self.socket_exist():
-            self.send('quit')
+        self.send('quit')
+        self.close()
     
     def play(self, url):
-        self.connect()
-        self.send('clear')
-        self.send('add ' + url)
+        self.start()
+        self.send("clear")
+        self.send("add " + url)
+        self.close()
         
     def stop(self):
         self.send('stop')
+        self.close()
             
     def resume(self):
-        self.connect()
         self.send('play')
+        self.close()
 
 
 def main():
     cmd_name = os.path.basename(sys.argv[0])
+
+    if not os.path.exists(VLC_EXEC):
+        print "Expected to find VLC program at #{VLC_EXEC}, it wasn't there. Please install VLC from: http://www.videolan.org"
+        exit()
+
     ml = MusicList()
 
-    if not ml.exists():
-        print "No Music file"
-        exit()
-    
     if len(sys.argv) == 1:
         print "Available streams:"
         for name, url in ml.data.items():

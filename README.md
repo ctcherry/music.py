@@ -18,8 +18,7 @@ Installation
 
 One Liner:
 
-`$ bash < <(curl -s https://raw.github.com/ctcherry/music.py/master/install.sh)
-
+`$ bash < <(curl -s https://raw.github.com/ctcherry/music.py/master/install.sh)`
 
 Configuration
 -------------

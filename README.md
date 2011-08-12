@@ -26,3 +26,7 @@ Configuration
 -------------
 
 The script will auto-create its configuration file in `~/.music`. It's a very simple file, and includes a few DI.fm streams by default, feel free to add anything that VLC supports. The format is `name_here: http://url` one entry per line.
+
+But...
+------
+You don't like Python? How about a version in Ruby: [music.rb](https://github.com/ctcherry/music.rb)

@@ -4,12 +4,14 @@ MUSIC_FILE = "~/.music"
 
 VLC_EXEC = "/Applications/VLC.app/Contents/MacOS/VLC"
 VLC_SOCKET = "/tmp/vlc.sock"
+VLC_PID_FILE = "/tmp/vlc.pid"
 
 import os
 import socket
 import stat
 import sys
 import subprocess
+import signal
 
 from time import sleep
 
@@ -47,22 +49,47 @@ class MusicList(object):
     def _striplist(self, l):
         return([x.strip() for x in l])
 
+class TimeoutException(Exception): pass
 
 class VLCSocket(object):
-    def __init__(self, exec_path=VLC_EXEC, socket_path=VLC_SOCKET):
+    def __init__(self, exec_path=VLC_EXEC, socket_path=VLC_SOCKET, pid_file=VLC_PID_FILE):
         self.exec_path = exec_path
         self.socket_path = socket_path
+        self.pid_file = pid_file
         self.socket = None
     
+    def running(self):
+        if not os.path.exists(self.pid_file):
+            return False
+        f = open(self.pid_file, 'r')
+        pid = f.read()
+        f.close()
+        try:
+            os.kill(int(pid), 0)
+        except OSError:
+            os.remove(self.pid_file)
+            return False
+        else:
+            return True
+    
     def start(self):
-        if not self.socket_exist():
-            # cmd = "%s --daemon -I oldrc --rc-unix=%s --rc-fake-tty" % (self.exec_path, self.socket_path)
-            # os.system(cmd)
-            subprocess.call([self.exec_path, '--daemon', '-I', 'oldrc', '--rc-unix', self.socket_path, '--rc-fake-tty'])
-            sleep(2)
+        if not self.running():
+            subprocess.call([self.exec_path, '--daemon', '-I', 'oldrc', '--rc-unix', self.socket_path, '--rc-fake-tty', '--pidfile', self.pid_file])
+            def signal_handler(signum, frame):
+                raise TimeoutException, "Timed out!"
+            signal.signal(signal.SIGALRM, signal_handler)
+            signal.alarm(5)
+            try:
+                while self.running() == False:
+                    sleep(0.5)
+            except TimeoutException, msg:
+                print "Couldn't launch VLC, timed out."
+                exit(1)
+            finally:
+                signal.alarm(0)
 
     def connect(self):
-        if self.socket is None and self.socket_exist():
+        if self.socket is None and self.running() and self.socket_exist():
             self.socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
             self.socket.connect(self.socket_path)
         
@@ -77,10 +104,9 @@ class VLCSocket(object):
             return False
     
     def send(self, data):
-        if self.socket_exist():
-            self.connect()
-            if self.socket is not None:
-                self.socket.send(data+"\n")
+        self.connect()
+        if self.socket is not None:
+            self.socket.send(data+"\n")
         
     def close(self):
         if self.socket is not None:

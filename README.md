@@ -5,7 +5,7 @@ A simple script intended to quickly play internet music streams from the command
 
 Requirements
 ------------
-VLC needs to be installed. (Tested with version 1.1.11)
+VLC needs to be installed. (Tested with version 1.1.11 - 2.0.0)
 
 Tested with Python 2.7.1, probably works on other recent versions too.
 
